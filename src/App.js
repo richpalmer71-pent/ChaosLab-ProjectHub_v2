@@ -14,7 +14,7 @@ const WEB_PLACEMENTS = ["Homepage","PLP","PDP","Other"];
 const BANNER_TYPES = ["Full Size Hero","Slim Banners","Secondary Banners","Other"];
 const defaultWebPart=(locale)=>({id:Date.now()+Math.random(),locale:locale||"",briefStatus:"brief_added",name:"",heroImage:"",heading:"",subcopy:"",cta:"",secondaryCta:"",notes:"",figmaLink:""});
 const defaultWebCard=(num)=>({id:Date.now()+Math.random(),num:num||1,name:"",parts:[defaultWebPart("UK (ENG)")],activeTab:0,collapsed:false});
-const defaultEmailPart=(locale)=>({id:Date.now()+Math.random(),locale:locale||"",briefStatus:"brief_added",subjectLine:"",preHeader:"",heroImage:"",heading:"",bodyCopy:"",cta:"",secondaryCta:"",notes:"",figmaLink:"",builderTemplate:"speedo-qnd",builderImages:{},builderHeroHeight:340});
+const defaultEmailPart=(locale)=>({id:Date.now()+Math.random(),locale:locale||"",briefStatus:"brief_added",subjectLine:"",preHeader:"",heroImage:"",heading:"",bodyCopy:"",cta:"",secondaryCta:"",notes:"",figmaLink:"",builderTemplate:"speedo-qnd",builderImages:{},builderHeroHeight:600});
 const defaultEmailCard=(num)=>({id:Date.now()+Math.random(),num:num||1,name:"",sendDate:"",handoverDate:"",parts:[defaultEmailPart("UK (ENG)")],activeTab:0,collapsed:false});
 
 export default function App(){
@@ -36,30 +36,38 @@ export default function App(){
   const [objective,setObj]=useState(""); const [locales,setLoc]=useState([]); const [sd,setSd]=useState(""); const [ed,setEd]=useState(""); const [hd2,setHd2]=useState("");
   const [tkTitle,setTkTitle]=useState(""); const [damLink,setDam]=useState(""); const [abLink,setAb]=useState(""); const [dFiles,setDf]=useState(""); const [cpTk,setCpTk]=useState(""); const [bGuid,setBg]=useState("");
   const [ch,setCh]=useState([]);
-  const [wp,setWp]=useState([]); const [wbt,setWbt]=useState([]); const [webAssets,setWebAssets]=useState([defaultWebCard(1)]); const [webOwner,setWebOwner]=useState("");
-  const addWA=()=>setWebAssets(a=>[...a,defaultWebCard(a.length+1)]);
-  const rmWA=id=>setWebAssets(a=>{const f=a.filter(w=>w.id!==id);return f.map((w,i)=>({...w,num:i+1}));});
-  const upWeb=(id,field,val)=>setWebAssets(a=>a.map(w=>w.id===id?{...w,[field]:val}:w));
-  const upWebPart=(webId,partIdx,field,val)=>setWebAssets(a=>a.map(w=>{if(w.id!==webId)return w;const np=w.parts.map((p,i)=>i===partIdx?{...p,[field]:val}:p);return{...w,parts:np};}));
-  const addWebPart=async(webId,locale)=>{const newPartId=Date.now()+Math.random();const w=webAssets.find(x=>x.id===webId);if(!w)return;const src=w.parts[w.activeTab]||w.parts[0];const np={...src,id:newPartId,locale,briefStatus:"brief_added",figmaLink:""};setWebAssets(a=>a.map(w2=>{if(w2.id!==webId)return w2;return{...w2,parts:[...w2.parts,np],activeTab:w2.parts.length,collapsed:false};}));if(LANG[locale]){const t=await tx({name:src.name,heading:src.heading,subcopy:src.subcopy,cta:src.cta,secondaryCta:src.secondaryCta,notes:src.notes},locale);setWebAssets(a=>a.map(w2=>{if(w2.id!==webId)return w2;const updatedParts=w2.parts.map(p=>p.id===newPartId?{...p,...t}:p);return{...w2,parts:updatedParts};}));}};
-  const removeWebPart=(webId,partIdx)=>{setWebAssets(a=>a.map(w=>{if(w.id!==webId||w.parts.length<=1)return w;const np=w.parts.filter((_,i)=>i!==partIdx);const na=w.activeTab>=np.length?np.length-1:w.activeTab>partIdx?w.activeTab-1:w.activeTab;return{...w,parts:np,activeTab:na};}));};
-  const dupWeb=(web)=>{const num=webAssets.length+1;const clone={...web,id:Date.now()+Math.random(),num,parts:web.parts.map(p=>({...p,id:Date.now()+Math.random()})),activeTab:0,collapsed:false};setWebAssets(a=>[...a,clone]);};
+  const [wp,setWp]=useState([]); const [wbt,setWbt]=useState([]); const [webAssets,setWebAssets]=useState([defaultWebCard(1)]); const [webOwner,setWebOwnerRaw]=useState("");
+  const setWebOwner=v=>{setWebOwnerRaw(v);markDirty("brief");};
+  const addWA=()=>{setWebAssets(a=>[...a,defaultWebCard(a.length+1)]);markDirty("brief");};
+  const rmWA=id=>{setWebAssets(a=>{const f=a.filter(w=>w.id!==id);return f.map((w,i)=>({...w,num:i+1}));});markDirty("brief");};
+  const upWeb=(id,field,val)=>{setWebAssets(a=>a.map(w=>w.id===id?{...w,[field]:val}:w));markDirty("brief");};
+  const upWebPart=(webId,partIdx,field,val)=>{setWebAssets(a=>a.map(w=>{if(w.id!==webId)return w;const np=w.parts.map((p,i)=>i===partIdx?{...p,[field]:val}:p);return{...w,parts:np};}));markDirty("brief");};
+  const addWebPart=async(webId,locale)=>{markDirty("brief");const newPartId=Date.now()+Math.random();const w=webAssets.find(x=>x.id===webId);if(!w)return;const src=w.parts[w.activeTab]||w.parts[0];const np={...src,id:newPartId,locale,briefStatus:"brief_added",figmaLink:""};setWebAssets(a=>a.map(w2=>{if(w2.id!==webId)return w2;return{...w2,parts:[...w2.parts,np],activeTab:w2.parts.length,collapsed:false};}));if(LANG[locale]){const t=await tx({name:src.name,heading:src.heading,subcopy:src.subcopy,cta:src.cta,secondaryCta:src.secondaryCta,notes:src.notes},locale);setWebAssets(a=>a.map(w2=>{if(w2.id!==webId)return w2;const updatedParts=w2.parts.map(p=>p.id===newPartId?{...p,...t}:p);return{...w2,parts:updatedParts};}));}};
+  const removeWebPart=(webId,partIdx)=>{setWebAssets(a=>a.map(w=>{if(w.id!==webId||w.parts.length<=1)return w;const np=w.parts.filter((_,i)=>i!==partIdx);const na=w.activeTab>=np.length?np.length-1:w.activeTab>partIdx?w.activeTab-1:w.activeTab;return{...w,parts:np,activeTab:na};}));markDirty("brief");};
+  const dupWeb=(web)=>{const num=webAssets.length+1;const clone={...web,id:Date.now()+Math.random(),num,parts:web.parts.map(p=>({...p,id:Date.now()+Math.random()})),activeTab:0,collapsed:false};setWebAssets(a=>[...a,clone]);markDirty("brief");};
   const changeWebPartLocale=async(webId,partIdx,newLocale)=>{const w=webAssets.find(x=>x.id===webId);if(!w)return;const part=w.parts[partIdx];const partId=part.id;upWebPart(webId,partIdx,"locale",newLocale);if(LANG[newLocale]){const t=await tx({name:part.name,heading:part.heading,subcopy:part.subcopy,cta:part.cta,secondaryCta:part.secondaryCta,notes:part.notes},newLocale);setWebAssets(a=>a.map(w2=>{if(w2.id!==webId)return w2;const updatedParts=w2.parts.map(p=>p.id===partId?{...p,...t}:p);return{...w2,parts:updatedParts};}));}};
   const [showWebLocalePicker,setShowWebLocalePicker]=useState(null);
-  const [et,setEt]=useState([]); const [emails,setEmails]=useState([defaultEmailCard(1)]); const [emailOwner,setEmailOwner]=useState(""); const [emailSort,setEmailSort]=useState("asc");
-  const addE=()=>setEmails(e=>[...e,defaultEmailCard(e.length+1)]);
-  const rmE=id=>setEmails(e=>{const f=e.filter(em=>em.id!==id);return f.map((em,i)=>({...em,num:i+1}));});
-  const upEmail=(id,field,val)=>setEmails(e=>e.map(em=>em.id===id?{...em,[field]:val}:em));
-  const upEmailPart=(emailId,partIdx,field,val)=>setEmails(e=>e.map(em=>{if(em.id!==emailId)return em;const np=em.parts.map((p,i)=>i===partIdx?{...p,[field]:val}:p);return{...em,parts:np};}));
-  const addEmailPart=async(emailId,locale)=>{const newPartId=Date.now()+Math.random();const em=emails.find(x=>x.id===emailId);if(!em)return;const src=em.parts[em.activeTab]||em.parts[0];const np={...src,id:newPartId,locale,briefStatus:"brief_added",figmaLink:""};setEmails(e=>e.map(em2=>{if(em2.id!==emailId)return em2;return{...em2,parts:[...em2.parts,np],activeTab:em2.parts.length,collapsed:false};}));if(LANG[locale]){const t=await tx({subjectLine:src.subjectLine,preHeader:src.preHeader,heading:src.heading,bodyCopy:src.bodyCopy,cta:src.cta,secondaryCta:src.secondaryCta,notes:src.notes},locale);setEmails(e=>e.map(em2=>{if(em2.id!==emailId)return em2;const updatedParts=em2.parts.map(p=>p.id===newPartId?{...p,...t}:p);return{...em2,parts:updatedParts};}));}};
-  const removeEmailPart=(emailId,partIdx)=>{setEmails(e=>e.map(em=>{if(em.id!==emailId||em.parts.length<=1)return em;const np=em.parts.filter((_,i)=>i!==partIdx);const na=em.activeTab>=np.length?np.length-1:em.activeTab>partIdx?em.activeTab-1:em.activeTab;return{...em,parts:np,activeTab:na};}));};
-  const dupEmail=(email)=>{const num=emails.length+1;const clone={...email,id:Date.now()+Math.random(),num,parts:email.parts.map(p=>({...p,id:Date.now()+Math.random()})),activeTab:0,collapsed:false};setEmails(e=>[...e,clone]);};
+  const [et,setEt]=useState([]); const [emails,setEmails]=useState([defaultEmailCard(1)]); const [emailOwner,setEmailOwnerRaw]=useState(""); const [emailSort,setEmailSort]=useState("asc");
+  const setEmailOwner=v=>{setEmailOwnerRaw(v);markDirty("brief");};
+  const addE=()=>{setEmails(e=>[...e,defaultEmailCard(e.length+1)]);markDirty("brief");};
+  const rmE=id=>{setEmails(e=>{const f=e.filter(em=>em.id!==id);return f.map((em,i)=>({...em,num:i+1}));});markDirty("brief");};
+  const upEmail=(id,field,val)=>{setEmails(e=>e.map(em=>em.id===id?{...em,[field]:val}:em));markDirty("brief");};
+  const upEmailPart=(emailId,partIdx,field,val)=>{setEmails(e=>e.map(em=>{if(em.id!==emailId)return em;const np=em.parts.map((p,i)=>i===partIdx?{...p,[field]:val}:p);return{...em,parts:np};}));markDirty("brief");};
+  const addEmailPart=async(emailId,locale)=>{markDirty("brief");const newPartId=Date.now()+Math.random();const em=emails.find(x=>x.id===emailId);if(!em)return;const src=em.parts[em.activeTab]||em.parts[0];const np={...src,id:newPartId,locale,briefStatus:"brief_added",figmaLink:""};setEmails(e=>e.map(em2=>{if(em2.id!==emailId)return em2;return{...em2,parts:[...em2.parts,np],activeTab:em2.parts.length,collapsed:false};}));if(LANG[locale]){const t=await tx({subjectLine:src.subjectLine,preHeader:src.preHeader,heading:src.heading,bodyCopy:src.bodyCopy,cta:src.cta,secondaryCta:src.secondaryCta,notes:src.notes},locale);setEmails(e=>e.map(em2=>{if(em2.id!==emailId)return em2;const updatedParts=em2.parts.map(p=>p.id===newPartId?{...p,...t}:p);return{...em2,parts:updatedParts};}));}};
+  const removeEmailPart=(emailId,partIdx)=>{setEmails(e=>e.map(em=>{if(em.id!==emailId||em.parts.length<=1)return em;const np=em.parts.filter((_,i)=>i!==partIdx);const na=em.activeTab>=np.length?np.length-1:em.activeTab>partIdx?em.activeTab-1:em.activeTab;return{...em,parts:np,activeTab:na};}));markDirty("brief");};
+  const dupEmail=(email)=>{const num=emails.length+1;const clone={...email,id:Date.now()+Math.random(),num,parts:email.parts.map(p=>({...p,id:Date.now()+Math.random()})),activeTab:0,collapsed:false};setEmails(e=>[...e,clone]);markDirty("brief");};
   const sortedEmails=[...emails].sort((a,b)=>{const da=a.sendDate||"9999-12-31";const db=b.sendDate||"9999-12-31";return emailSort==="asc"?da.localeCompare(db):db.localeCompare(da);});
   const localeShort=l=>{if(!l)return"";if(l.includes("UK"))return"UK";if(l.includes("US"))return"US";if(l.includes("CAN (FR)"))return"CAN-FR";if(l.includes("CAN"))return"CAN";if(l.includes("DE"))return"DE";if(l.includes("FR (FR)"))return"FR";return l;};
   const changePartLocale=async(emailId,partIdx,newLocale)=>{const em=emails.find(x=>x.id===emailId);if(!em)return;const part=em.parts[partIdx];const partId=part.id;upEmailPart(emailId,partIdx,"locale",newLocale);if(LANG[newLocale]){const t=await tx({subjectLine:part.subjectLine,preHeader:part.preHeader,heading:part.heading,bodyCopy:part.bodyCopy,cta:part.cta,secondaryCta:part.secondaryCta,notes:part.notes},newLocale);setEmails(e=>e.map(em2=>{if(em2.id!==emailId)return em2;const updatedParts=em2.parts.map(p=>p.id===partId?{...p,...t}:p);return{...em2,parts:updatedParts};}));}};
   const [showLocalePicker,setShowLocalePicker]=useState(null);
-  const [ps,setPs]=useState({}); const [os,setOs]=useState(""); const [phi,setPhi]=useState(""); const [pc,setPc]=useState(""); const [pv,setPv]=useState(""); const [paidOwner,setPaidOwner]=useState("");
-  const tps=(gr,sz)=>setPs(p=>{const a=p[gr]||[];return{...p,[gr]:a.includes(sz)?a.filter(s=>s!==sz):[...a,sz]};});
+  const [ps,setPsRaw]=useState({}); const [os,setOsRaw]=useState(""); const [phi,setPhiRaw]=useState(""); const [pc,setPcRaw]=useState(""); const [pv,setPvRaw]=useState(""); const [paidOwner,setPaidOwnerRaw]=useState("");
+  const setPs=v=>{setPsRaw(v);markDirty("brief");};
+  const setOs=v=>{setOsRaw(v);markDirty("brief");};
+  const setPhi=v=>{setPhiRaw(v);markDirty("brief");};
+  const setPc=v=>{setPcRaw(v);markDirty("brief");};
+  const setPv=v=>{setPvRaw(v);markDirty("brief");};
+  const setPaidOwner=v=>{setPaidOwnerRaw(v);markDirty("brief");};
+  const tps=(gr,sz)=>{setPs(p=>{const a=p[gr]||[];return{...p,[gr]:a.includes(sz)?a.filter(s=>s!==sz):[...a,sz]};});};
   const [dl,setDl]=useState(""); const [cl,setCl]=useState(""); const [crl,setCrl]=useState(""); const [pl,setPl]=useState("");
   const [pdl,setPdl]=useState(""); const [pcl,setPcl]=useState(""); const [pcrl,setPcrl]=useState(""); const [ppl,setPpl]=useState(""); const [pfa,setPfa]=useState("");
   const [es,setEs]=useState(null); const [ho,setHo]=useState("");
@@ -91,10 +99,31 @@ export default function App(){
     }
   };
 
+  // AUTOSAVE — background save, debounced, whenever a module goes dirty.
+  // Removes the need to remember to hit "Save Changes" before navigating
+  // away, closing a card, or switching projects.
+  useEffect(()=>{
+    const dirtyMods=Object.keys(modDirty).filter(m=>modDirty[m]);
+    if(dirtyMods.length===0)return;
+    const t=setTimeout(()=>{dirtyMods.forEach(m=>saveModule(m));},1500);
+    return ()=>clearTimeout(t);
+  },[modDirty]);
+
+  // Belt-and-braces: warn if the tab is closed mid-debounce, before the
+  // autosave above has had its 1.5s to fire.
+  useEffect(()=>{
+    const anyDirty=Object.values(modDirty).some(Boolean);
+    if(!anyDirty)return;
+    const handler=e=>{e.preventDefault();e.returnValue="";};
+    window.addEventListener("beforeunload",handler);
+    return ()=>window.removeEventListener("beforeunload",handler);
+  },[modDirty]);
+
   // LOAD FROM DATABASE
   const loadFromDb=useCallback(async(jn)=>{
     if(!jn)return false;
     setDbLoading(true);
+    setModDirty({});setModSaved({});
     const proj=await loadProject(jn);
     if(!proj){setDbLoading(false);return false;}
     // Populate state from database
@@ -116,7 +145,7 @@ export default function App(){
     else{setEmails([defaultEmailCard(1)]);}
     // Load paid media
     const pm=await loadPaidMedia(proj.id);
-    if(pm){setPs(pm.sizes||{});setOs(pm.other_sizes||"");setPhi(pm.hero_image||"");setPc(pm.copy_requirements||"");setPv(pm.video_content||"");setPaidOwner(pm.owner||"");}
+    if(pm){setPsRaw(pm.sizes||{});setOsRaw(pm.other_sizes||"");setPhiRaw(pm.hero_image||"");setPcRaw(pm.copy_requirements||"");setPvRaw(pm.video_content||"");setPaidOwnerRaw(pm.owner||"");}
     // Load profiles
     const profs=await dbLoadProfiles();
     if(profs&&profs.length>0){setProfiles(profs.map(p=>({email:p.email,firstName:p.first_name,lastName:p.last_name,jobTitle:p.job_title,department:p.department})));}
@@ -650,20 +679,22 @@ export default function App(){
                     <div className="hub-grid-2" style={g(2)}><Field label="PRIMARY CTA"><Input value={ap.cta} onChange={v=>upEmailPart(em.id,tabIdx,"cta",v)} placeholder="e.g. Shop Now"/></Field><Field label="SECONDARY CTA"><Input value={ap.secondaryCta} onChange={v=>upEmailPart(em.id,tabIdx,"secondaryCta",v)} placeholder="e.g. Learn More"/></Field></div>
                     <Field label="NOTES"><TextArea value={ap.notes} onChange={v=>upEmailPart(em.id,tabIdx,"notes",v)} placeholder="Additional notes..." rows={2}/></Field>
                   </div>
-                  <EmailBuilder
-                    templateId={ap.builderTemplate||"speedo-qnd"}
-                    onTemplateChange={v=>upEmailPart(em.id,tabIdx,"builderTemplate",v)}
-                    heading={ap.heading}
-                    subheading={ap.bodyCopy}
-                    cta={ap.cta}
-                    heroImage={ap.heroImage}
-                    onHeroImage={v=>upEmailPart(em.id,tabIdx,"heroImage",v)}
-                    heroHeight={ap.builderHeroHeight||340}
-                    onHeroHeightChange={v=>upEmailPart(em.id,tabIdx,"builderHeroHeight",v)}
-                    gridImages={ap.builderImages||{}}
-                    onGridImagesChange={v=>upEmailPart(em.id,tabIdx,"builderImages",v)}
-                    subjectLine={ap.subjectLine}
-                  />
+                  <div style={{position:"sticky",top:20,maxHeight:"calc(100vh - 100px)",overflowY:"auto",padding:"12px 40px 40px 4px",margin:"-12px -40px -40px -4px"}}>
+                    <EmailBuilder
+                      templateId={ap.builderTemplate||"speedo-qnd"}
+                      onTemplateChange={v=>upEmailPart(em.id,tabIdx,"builderTemplate",v)}
+                      heading={ap.heading}
+                      subheading={ap.bodyCopy}
+                      cta={ap.cta}
+                      heroImage={ap.heroImage}
+                      onHeroImage={v=>upEmailPart(em.id,tabIdx,"heroImage",v)}
+                      heroHeight={ap.builderHeroHeight||600}
+                      onHeroHeightChange={v=>upEmailPart(em.id,tabIdx,"builderHeroHeight",v)}
+                      gridImages={ap.builderImages||{}}
+                      onGridImagesChange={v=>upEmailPart(em.id,tabIdx,"builderImages",v)}
+                      subjectLine={ap.subjectLine}
+                    />
+                  </div>
                 </div>
               </div>
               {/* Footer */}
@@ -732,6 +763,9 @@ export default function App(){
 
       <div className="brief-footer" style={{position:"fixed",bottom:0,left:250,right:0,background:"rgba(236,238,241,0.96)",backdropFilter:"blur(10px)",borderTop:`1px solid ${C.g88}`,padding:"12px 40px",display:"flex",alignItems:"center",justifyContent:"flex-end",gap:10,zIndex:100}}>
         {es&&<div style={{position:"absolute",top:-40,left:"50%",transform:"translateX(-50%)",background:C.black,color:C.card,padding:"6px 16px",...rad,fontSize:11,...hd,fontFamily:ff,animation:"fu .2s ease"}}>{es==="handed"?"BRIEF SUBMITTED":"CHANGES SAVED"}</div>}
+        <div style={{marginRight:"auto",display:"flex",alignItems:"center",gap:6,fontSize:11,...bd,color:C.g50,fontFamily:ff}}>
+          {modDirty.brief?<><div style={{width:6,height:6,borderRadius:3,background:C.yellow}}/>Saving…</>:modSaved.brief?<><div style={{width:6,height:6,borderRadius:3,background:C.green}}/>All changes saved</>:null}
+        </div>
         <button onClick={async()=>{setEs("saved");setTimeout(()=>setEs(null),3000);await saveModule("brief");setShowNotifyModal(true);}} style={{padding:"11px 24px",border:"none",...rad,background:C.black,color:C.card,fontSize:13,...hd,fontFamily:ff,cursor:"pointer"}}>SAVE CHANGES</button>
         <button onClick={()=>{setEs("handed");setTimeout(()=>setEs(null),3000);}} style={{padding:"11px 24px",border:`1px solid ${C.g88}`,...rad,background:C.card,color:C.g50,fontSize:13,...hd,fontFamily:ff,cursor:"pointer"}}>SUBMIT BRIEF</button>
       </div>

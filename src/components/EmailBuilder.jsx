@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import JSZip from "jszip";
 import { C, ff, hd, rad } from "./shared";
+import ImageCropper from "./ImageCropper";
 
 const bff = "'Athletics',Arial,Helvetica,sans-serif";
 
@@ -11,9 +12,9 @@ const LOGO_PATH = "/logos/speedo-logo-red.png";
 const SITE_ORIGIN = "https://chaos-lab-project-hub-v2.vercel.app";
 const LOGO_URL_ABSOLUTE = SITE_ORIGIN + LOGO_PATH;
 
-const DEFAULT_HERO_HEIGHT = 340;
-const MIN_HERO_HEIGHT = 120;
-const MAX_HERO_HEIGHT = 700;
+const DEFAULT_HERO_HEIGHT = 600;
+const MIN_HERO_HEIGHT = 500;
+const MAX_HERO_HEIGHT = 1000;
 
 // ============================================================
 // TEMPLATE REGISTRY
@@ -133,11 +134,12 @@ export default function EmailBuilder({
 }) {
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
+  const [cropSlot, setCropSlot] = useState(null); // { slotId, source } while the crop modal is open
   const fileInputRef = useRef(null);
   const activeSlotRef = useRef(null);
   const tpl = EMAIL_TEMPLATES.find((t) => t.id === templateId) || EMAIL_TEMPLATES[0];
   const gi = gridImages || {};
-  const hh = heroHeight || DEFAULT_HERO_HEIGHT;
+  const hh = Math.max(MIN_HERO_HEIGHT, Math.min(MAX_HERO_HEIGHT, heroHeight || DEFAULT_HERO_HEIGHT));
 
   const flash = (msg) => {
     setStatus(msg);
@@ -164,7 +166,38 @@ export default function EmailBuilder({
     window.removeEventListener("mouseup", endDrag);
   };
 
+  // Crop/export dimensions per slot. Preview is what you see while
+  // dragging/zooming; target is the actual pixel size baked into the
+  // final JPEG (2x the display size, for crisp export).
+  const getSlotDims = (slotId) => {
+    if (slotId === "hero") {
+      const targetW = 920;
+      const targetH = hh * 2;
+      let previewW = 300;
+      let previewH = previewW * (hh / 460);
+      if (previewH > 420) {
+        previewH = 420;
+        previewW = previewH * (460 / hh);
+      }
+      return { previewW, previewH, targetW, targetH };
+    }
+    return { previewW: 260, previewH: 260, targetW: 600, targetH: 600 };
+  };
+
+  const currentSlotSrc = (slotId) => (slotId === "hero" ? heroImage : gi[slotId]);
+
+  // Empty slot → pick a file. Filled slot → jump straight into
+  // reposition/crop on the image that's already there.
   const openPicker = (slotId) => {
+    const existing = currentSlotSrc(slotId);
+    if (existing) {
+      setCropSlot({ slotId, source: existing });
+    } else {
+      triggerFilePicker(slotId);
+    }
+  };
+
+  const triggerFilePicker = (slotId) => {
     activeSlotRef.current = slotId;
     fileInputRef.current?.click();
   };
@@ -176,12 +209,25 @@ export default function EmailBuilder({
     if (!file || !slotId) return;
     try {
       const dataUrl = await fileToJpegDataUrl(file);
-      if (slotId === "hero") onHeroImage(dataUrl);
-      else onGridImagesChange({ ...gi, [slotId]: dataUrl });
-      flash("Image added.");
+      setCropSlot({ slotId, source: dataUrl });
     } catch {
       flash("Couldn't read that image — try another file.");
     }
+  };
+
+  const handleCropConfirm = (dataUrl) => {
+    if (!cropSlot) return;
+    if (cropSlot.slotId === "hero") onHeroImage(dataUrl);
+    else onGridImagesChange({ ...gi, [cropSlot.slotId]: dataUrl });
+    setCropSlot(null);
+    flash("Image updated.");
+  };
+
+  const handleCropCancel = () => setCropSlot(null);
+  const handleCropReplace = () => {
+    const slotId = cropSlot?.slotId;
+    setCropSlot(null);
+    if (slotId) triggerFilePicker(slotId);
   };
 
   const exportData = { heading, subheading, cta, heroImage, gridImages: gi, subjectLine, heroHeight: hh };
@@ -300,7 +346,7 @@ export default function EmailBuilder({
             src={heroImage}
             onClick={() => openPicker("hero")}
             style={{ width: 460, height: hh }}
-            label="Click to add hero image, or paste a link on the left"
+            label={heroImage ? "Click to reposition or crop" : "Click to add hero image, or paste a link on the left"}
           />
           <div
             onMouseDown={startDrag}
@@ -378,7 +424,7 @@ export default function EmailBuilder({
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 2 }}>
           {TILE_IDS.map((id) => (
-            <ImageSlot key={id} src={gi[id]} onClick={() => openPicker(id)} tile label="Add product" />
+            <ImageSlot key={id} src={gi[id]} onClick={() => openPicker(id)} tile label={gi[id] ? "Reposition" : "Add product"} />
           ))}
         </div>
 
@@ -399,7 +445,7 @@ export default function EmailBuilder({
       </div>
 
       <div style={{ fontSize: 10, color: C.g70, marginTop: 10, lineHeight: 1.5, fontFamily: ff }}>
-        Product grid images are added here only — click any of the six tiles to upload.
+        Product grid images live here only — click a tile to add one, or click again to reposition/crop it.
       </div>
 
       {/* ---------- EXPORT ---------- */}
@@ -413,6 +459,23 @@ export default function EmailBuilder({
       <div style={{ fontSize: 10, color: C.g50, textAlign: "center", marginTop: 8, minHeight: 14, fontFamily: ff }}>{status}</div>
 
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
+
+      {cropSlot &&
+        (() => {
+          const dims = getSlotDims(cropSlot.slotId);
+          return (
+            <ImageCropper
+              source={cropSlot.source}
+              previewW={dims.previewW}
+              previewH={dims.previewH}
+              targetW={dims.targetW}
+              targetH={dims.targetH}
+              onConfirm={handleCropConfirm}
+              onCancel={handleCropCancel}
+              onReplace={handleCropReplace}
+            />
+          );
+        })()}
     </div>
   );
 }
