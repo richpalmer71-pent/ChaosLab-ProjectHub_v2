@@ -4,6 +4,17 @@ import { C, ff, hd, rad } from "./shared";
 
 const bff = "'Athletics',Arial,Helvetica,sans-serif";
 
+// Served from /public/logos — relative path works fine inside the app;
+// exported HTML needs an absolute URL since it'll be opened outside
+// this app (Ometria, a downloaded file, etc).
+const LOGO_PATH = "/logos/speedo-logo-red.png";
+const SITE_ORIGIN = "https://chaos-lab-project-hub-v2.vercel.app";
+const LOGO_URL_ABSOLUTE = SITE_ORIGIN + LOGO_PATH;
+
+const DEFAULT_HERO_HEIGHT = 340;
+const MIN_HERO_HEIGHT = 120;
+const MAX_HERO_HEIGHT = 700;
+
 // ============================================================
 // TEMPLATE REGISTRY
 // One entry per template. Add new brands/layouts here as they're
@@ -55,13 +66,14 @@ function slotImgTag(src, forZip, slotId) {
   return `<img src="${url}" width="100%" style="display:block;width:100%;height:100%;object-fit:cover;" alt="">`;
 }
 
-function buildSpeedoQndHtml({ heading, subheading, cta, heroImage, gridImages, subjectLine }, forZip) {
+function buildSpeedoQndHtml({ heading, subheading, cta, heroImage, gridImages, subjectLine, heroHeight }, forZip) {
   const tileTds = TILE_IDS.map(
     (id) => `
         <div style="position:relative;width:100%;padding-bottom:100%;background:#C9C9C9;">
           <div style="position:absolute;inset:0;">${slotImgTag(gridImages[id], forZip, id)}</div>
         </div>`
   ).join("");
+  const heroH = heroHeight || DEFAULT_HERO_HEIGHT;
 
   return `<!DOCTYPE html>
 <html><head>
@@ -73,14 +85,14 @@ function buildSpeedoQndHtml({ heading, subheading, cta, heroImage, gridImages, s
 <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="460" style="width:460px;background:#FFFFFF;border-collapse:collapse;margin:0 auto;">
 <tbody>
 <tr><td align="center" style="padding:28px 24px 26px;background:#FFFFFF;">
-<span style="font-family:Arial,Helvetica,sans-serif;font-weight:900;font-size:22px;letter-spacing:2px;color:#0B1A1E;text-transform:uppercase;">SPEEDO</span>
+<img src="${LOGO_URL_ABSOLUTE}" width="150" alt="Speedo" style="display:block;width:150px;height:auto;">
 </td></tr>
 <tr><td style="padding:0;font-size:0;line-height:0;">
-<div style="position:relative;width:460px;height:575px;background:#C4C4C4;">${slotImgTag(heroImage, forZip, "hero")}</div>
+<div style="position:relative;width:460px;height:${heroH}px;background:#C4C4C4;">${slotImgTag(heroImage, forZip, "hero")}</div>
 </td></tr>
 <tr><td align="center" style="padding:44px 40px 46px;background:#FFFFFF;">
 <h1 style="margin:0;font-weight:900;font-size:30px;line-height:1.05;letter-spacing:.5px;text-transform:uppercase;color:#0B1A1E;">${heading || ""}</h1>
-<p style="margin:16px 0 0;font-size:15px;line-height:1.5;color:#666666;max-width:340px;margin-left:auto;margin-right:auto;">${subheading || ""}</p>
+<p style="margin:16px 0 0;font-size:15px;line-height:1.5;color:#0B1A1E;max-width:340px;margin-left:auto;margin-right:auto;">${subheading || ""}</p>
 <div style="margin-top:26px;">
 <a href="#" style="display:inline-block;font-weight:700;font-size:15px;color:#FFFFFF;background:#0B1A1E;border:1.5px solid #0B1A1E;border-radius:64px;padding:16px 34px;min-width:180px;box-sizing:border-box;text-align:center;text-decoration:none;">${cta || ""}</a>
 </div>
@@ -113,6 +125,8 @@ export default function EmailBuilder({
   cta,
   heroImage,
   onHeroImage,
+  heroHeight,
+  onHeroHeightChange,
   gridImages,
   onGridImagesChange,
   subjectLine,
@@ -123,10 +137,31 @@ export default function EmailBuilder({
   const activeSlotRef = useRef(null);
   const tpl = EMAIL_TEMPLATES.find((t) => t.id === templateId) || EMAIL_TEMPLATES[0];
   const gi = gridImages || {};
+  const hh = heroHeight || DEFAULT_HERO_HEIGHT;
 
   const flash = (msg) => {
     setStatus(msg);
     setTimeout(() => setStatus((s) => (s === msg ? "" : s)), 2500);
+  };
+
+  const clampHeight = (v) => Math.max(MIN_HERO_HEIGHT, Math.min(MAX_HERO_HEIGHT, v));
+
+  const dragStateRef = useRef(null);
+  const startDrag = (e) => {
+    e.preventDefault();
+    dragStateRef.current = { startY: e.clientY, startHeight: hh };
+    window.addEventListener("mousemove", onDrag);
+    window.addEventListener("mouseup", endDrag);
+  };
+  const onDrag = (e) => {
+    if (!dragStateRef.current) return;
+    const delta = e.clientY - dragStateRef.current.startY;
+    onHeroHeightChange(clampHeight(Math.round(dragStateRef.current.startHeight + delta)));
+  };
+  const endDrag = () => {
+    dragStateRef.current = null;
+    window.removeEventListener("mousemove", onDrag);
+    window.removeEventListener("mouseup", endDrag);
   };
 
   const openPicker = (slotId) => {
@@ -149,7 +184,7 @@ export default function EmailBuilder({
     }
   };
 
-  const exportData = { heading, subheading, cta, heroImage, gridImages: gi, subjectLine };
+  const exportData = { heading, subheading, cta, heroImage, gridImages: gi, subjectLine, heroHeight: hh };
 
   const downloadFile = (filename, content, type) => {
     const blob = content instanceof Blob ? content : new Blob([content], { type });
@@ -238,19 +273,54 @@ export default function EmailBuilder({
       </div>
 
       {/* ---------- CANVAS ---------- */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8, marginBottom: 8 }}>
+        <label style={{ fontSize: 9, fontWeight: 600, letterSpacing: "0.04em", textTransform: "uppercase", color: C.g50, fontFamily: ff }}>
+          Hero height
+        </label>
+        <input
+          type="number"
+          value={hh}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (!isNaN(v)) onHeroHeightChange(clampHeight(v));
+          }}
+          min={MIN_HERO_HEIGHT}
+          max={MAX_HERO_HEIGHT}
+          style={{ width: 60, padding: "5px 8px", border: `1px solid ${C.g88}`, borderRadius: 6, fontSize: 11, fontFamily: ff, textAlign: "center", background: C.bg, color: C.black }}
+        />
+        <span style={{ fontSize: 9, color: C.g50, fontFamily: ff }}>px — or drag the handle on the hero</span>
+      </div>
       <div style={{ width: 460, background: "#fff", boxShadow: "0 8px 40px rgba(0,0,0,.5)" }}>
         <div style={{ padding: "26px 24px 24px", textAlign: "center" }}>
-          <span style={{ fontFamily: bff, fontWeight: 900, fontSize: 20, letterSpacing: 2, color: "#0B1A1E", textTransform: "uppercase" }}>
-            SPEEDO
-          </span>
+          <img src={LOGO_PATH} alt="Speedo" width="150" style={{ display: "inline-block", width: 150, height: "auto" }} />
         </div>
 
-        <ImageSlot
-          src={heroImage}
-          onClick={() => openPicker("hero")}
-          style={{ width: 460, height: 340 }}
-          label="Click to add hero image, or paste a link on the left"
-        />
+        <div style={{ position: "relative", width: 460 }}>
+          <ImageSlot
+            src={heroImage}
+            onClick={() => openPicker("hero")}
+            style={{ width: 460, height: hh }}
+            label="Click to add hero image, or paste a link on the left"
+          />
+          <div
+            onMouseDown={startDrag}
+            title="Drag to resize"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              bottom: -4,
+              height: 10,
+              cursor: "ns-resize",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 2,
+            }}
+          >
+            <div style={{ width: 44, height: 5, borderRadius: 3, background: C.black, opacity: 0.65, boxShadow: "0 1px 3px rgba(0,0,0,.4)" }} />
+          </div>
+        </div>
 
         <div style={{ padding: "36px 34px 38px", textAlign: "center" }}>
           <h1
@@ -275,7 +345,7 @@ export default function EmailBuilder({
               fontWeight: 400,
               fontSize: 14,
               lineHeight: 1.5,
-              color: "#666",
+              color: "#0B1A1E",
               maxWidth: 320,
               marginLeft: "auto",
               marginRight: "auto",

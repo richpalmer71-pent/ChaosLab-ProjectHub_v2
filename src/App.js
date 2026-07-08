@@ -14,7 +14,7 @@ const WEB_PLACEMENTS = ["Homepage","PLP","PDP","Other"];
 const BANNER_TYPES = ["Full Size Hero","Slim Banners","Secondary Banners","Other"];
 const defaultWebPart=(locale)=>({id:Date.now()+Math.random(),locale:locale||"",briefStatus:"brief_added",name:"",heroImage:"",heading:"",subcopy:"",cta:"",secondaryCta:"",notes:"",figmaLink:""});
 const defaultWebCard=(num)=>({id:Date.now()+Math.random(),num:num||1,name:"",parts:[defaultWebPart("UK (ENG)")],activeTab:0,collapsed:false});
-const defaultEmailPart=(locale)=>({id:Date.now()+Math.random(),locale:locale||"",briefStatus:"brief_added",subjectLine:"",preHeader:"",heroImage:"",heading:"",bodyCopy:"",cta:"",secondaryCta:"",notes:"",figmaLink:"",builderTemplate:"speedo-qnd",builderImages:{}});
+const defaultEmailPart=(locale)=>({id:Date.now()+Math.random(),locale:locale||"",briefStatus:"brief_added",subjectLine:"",preHeader:"",heroImage:"",heading:"",bodyCopy:"",cta:"",secondaryCta:"",notes:"",figmaLink:"",builderTemplate:"speedo-qnd",builderImages:{},builderHeroHeight:340});
 const defaultEmailCard=(num)=>({id:Date.now()+Math.random(),num:num||1,name:"",sendDate:"",handoverDate:"",parts:[defaultEmailPart("UK (ENG)")],activeTab:0,collapsed:false});
 
 export default function App(){
@@ -658,6 +658,8 @@ export default function App(){
                     cta={ap.cta}
                     heroImage={ap.heroImage}
                     onHeroImage={v=>upEmailPart(em.id,tabIdx,"heroImage",v)}
+                    heroHeight={ap.builderHeroHeight||340}
+                    onHeroHeightChange={v=>upEmailPart(em.id,tabIdx,"builderHeroHeight",v)}
                     gridImages={ap.builderImages||{}}
                     onGridImagesChange={v=>upEmailPart(em.id,tabIdx,"builderImages",v)}
                     subjectLine={ap.subjectLine}
