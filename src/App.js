@@ -153,6 +153,19 @@ export default function App(){
     return true;
   },[]);
 
+  // Opens a project the Hub Assistant found via its "find a job" search.
+  // Tries the real database first (in case the demo job exists there);
+  // falls back to the assistant's own result data so the demo always works.
+  const openProjectFromAssistant=async(proj)=>{
+    setDbxCreated(false);
+    const found=await loadFromDb(proj.id);
+    if(!found){
+      setJobNum(proj.id);setBrand(proj.brand||"");setTitle(proj.title||"");
+      setSd(proj.start||"");setEd(proj.end||"");setProjectStatus(proj.status||"active");
+    }
+    setView("project");
+  };
+
   const [view,setView]=useState("landing"); const [searchJob,setSearchJob]=useState("");
   const [sidebarOpen,setSidebarOpen]=useState(false);
   const [projectStatus,setProjectStatus]=useState("active");
@@ -372,7 +385,7 @@ export default function App(){
   const ML = (sub, label, accent, content) => (
     <div style={{minHeight:"100vh",background:C.bg,fontFamily:ff}}>
       <style>{GS}</style>
-      <Sidebar view={view} setView={setView} jobNum={jobNum} open={sidebarOpen} setOpen={setSidebarOpen}/>
+      <Sidebar view={view} setView={setView} jobNum={jobNum} open={sidebarOpen} setOpen={setSidebarOpen} onOpenProject={openProjectFromAssistant}/>
       <div className="main-content" style={{marginLeft:250,padding:"32px 40px 60px"}}>
         {actionMsg&&<div style={{marginBottom:16,padding:"10px 18px",background:projectStatus==="cancelled"?"#FF6B6B":projectStatus==="paused"?"#FFD93D":projectStatus==="archived"?C.g50:C.green,color:C.card,...rad,fontSize:12,...hd,fontFamily:ff,textAlign:"center"}}>{actionMsg}</div>}
         {projectStatus!=="active"&&<div style={{marginBottom:16,padding:"12px 18px",border:`1px solid ${projectStatus==="cancelled"?"#FF6B6B33":projectStatus==="paused"?"#FFD93D33":C.g88}`,...rad,background:C.card,display:"flex",alignItems:"center",gap:10}}>
